@@ -25,7 +25,7 @@ if 'chat_history' not in st.session_state:
 
 # Configure Streamlit page
 st.set_page_config(page_title="WasteWiseChatbot")
-st.title('WasteWiseChatbot - Simple Q&A Chatbot')
+st.title('WasteWiseChatbot - CSV-based Q&A Chatbot')
 
 # Function to search the CSV and generate a response
 def search_csv(input_text):
@@ -34,7 +34,7 @@ def search_csv(input_text):
     if matching_rows.empty:
         return "I couldn't find any relevant information in the data."
 
-    # Limit to the first 3 matching rows
+    # Combine the relevant rows for context
     result = "\n\n".join(matching_rows.head(3).apply(lambda row: row.to_string(), axis=1))
     
     return result
@@ -54,10 +54,10 @@ def generate_response(input_text):
             )
             final_response = response.choices[0].text.strip()
         except Exception as e:
-            final_response = f"An error occurred: {str(e)}"
+            final_response = f"An error occurred while communicating with OpenAI: {str(e)}"
     else:
-        final_response = "Unable to process your request. Make sure you have entered a valid OpenAI API key."
-    
+        final_response = "Unable to process your request. Make sure you have entered a valid OpenAI API key and there is relevant data."
+
     # Store the conversation history
     st.session_state['chat_history'].append({"user": input_text, "bot": final_response})
     return final_response
@@ -65,8 +65,8 @@ def generate_response(input_text):
 # Layout for displaying chat history and input form
 st.subheader("Conversation History")
 for chat in st.session_state['chat_history']:
-    st.text_area("You said:", value=chat['user'], height=75)
-    st.text_area("Bot said:", value=chat['bot'], height=75)
+    st.text_area("You said:", value=chat['user'], height=75, key=f"user_{chat['user']}")
+    st.text_area("Bot said:", value=chat['bot'], height=75, key=f"bot_{chat['bot']}")
 
 with st.form('my_form'):
     text = st.text_area(
@@ -77,4 +77,4 @@ with st.form('my_form'):
     submitted = st.form_submit_button('Submit')
     if submitted:
         response = generate_response(text)
-        st.text_area("Bot's response:", value=response, height=100)
+        st.text_area("Bot's response:", value=response, height=100, key="response_area")

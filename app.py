@@ -46,7 +46,7 @@ def generate_response(prompt, temperature=0.7):
             ],
             temperature=temperature
         )
-        return response.choices[0].message['content'].strip()
+        return response.choices[0].message.content.strip()
     except Exception as e:
         st.error(f"An error occurred: {e}")
         return "I'm sorry, I couldn't generate a response."

@@ -16,8 +16,24 @@ data = load_data('datasampah1.csv')
 if st.checkbox('Show CSV Data'):
     st.write(data)
 
-# OpenAI API Key (Make sure you set your API key in Streamlit's secrets)
-openai.api_key = st.secrets["openai_api_key"]
+# Sidebar for API key input
+st.sidebar.title("Configuration")
+api_key_input = st.sidebar.text_input(
+    "Enter your OpenAI API Key", type="password", key="api_key"
+)
+
+# Store the API key in the session state
+if api_key_input:
+    st.session_state["openai_api_key"] = api_key_input
+
+# Use the API key from session state
+api_key = st.session_state.get("openai_api_key", None)
+
+if not api_key:
+    st.sidebar.error("Please enter your OpenAI API key to continue.")
+    st.stop()
+
+openai.api_key = api_key
 
 # Function to generate responses using OpenAI's API
 def generate_response(prompt):

@@ -8,6 +8,11 @@ from langchain.text_splitter import CharacterTextSplitter
 from langchain.docstore.document import Document
 from langchain.llms import OpenAI
 
+# Initialize the OpenAI API key
+openai_api_key = st.sidebar.text_input('OpenAI API Key', type="password")
+if openai_api_key:
+    openai.api_key = openai_api_key
+
 # Load the CSV data
 df = pd.read_csv('datasampah1.csv')
 
@@ -18,16 +23,22 @@ documents = [Document(page_content=row.to_string()) for _, row in df.iterrows()]
 text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=0)
 split_docs = text_splitter.split_documents(documents)
 
-# Initialize OpenAI Embeddings and Vector Store
-embeddings = OpenAIEmbeddings()
-vectorstore = Chroma.from_documents(split_docs, embeddings)
+# Initialize OpenAI Embeddings and Vector Store with error handling
+try:
+    embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
+    vectorstore = Chroma.from_documents(split_docs, embeddings)
+except Exception as e:
+    st.error(f"An error occurred while initializing embeddings: {str(e)}")
 
 # Initialize the OpenAI LLM with the API key
-openai_api_key = st.sidebar.text_input('OpenAI API Key', type="password")
-llm = OpenAI(openai_api_key=openai_api_key, temperature=0.7)
+if openai_api_key:
+    llm = OpenAI(temperature=0.7, openai_api_key=openai_api_key)
+else:
+    st.warning("Please provide a valid OpenAI API key!")
 
-# Set up the QA chain
-qa_chain = load_qa_chain(llm=llm, chain_type="stuff", retriever=vectorstore.as_retriever())
+# Set up the QA chain if embeddings are initialized
+if 'embeddings' in locals():
+    qa_chain = load_qa_chain(llm=llm, chain_type="stuff", retriever=vectorstore.as_retriever())
 
 # Initialize session state for chat history
 if 'chat_history' not in st.session_state:
@@ -39,6 +50,9 @@ st.title('WasteWiseChatbot - Chatbot with LangChain and RAG')
 
 # Function to generate a response using LangChain
 def generate_response(input_text):
+    if 'qa_chain' not in locals():
+        return "QA chain is not properly initialized."
+    
     try:
         response = qa_chain.run(input_text)
     except Exception as e:

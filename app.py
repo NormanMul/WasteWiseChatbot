@@ -1,18 +1,15 @@
 import streamlit as st
 import pandas as pd
 import openai
+from openai.embeddings_utils import get_embedding, cosine_similarity
 
-# Set Streamlit page configuration - This must be at the very top
+# Set Streamlit page configuration
 st.set_page_config(page_title="WasteWiseChatbot", layout="centered")
 
 # Sidebar for API key input and temperature slider
 st.sidebar.title("Configuration")
-api_key_input = st.sidebar.text_input(
-    "OpenAI API Key", type="password", key="api_key"
-)
-temperature = st.sidebar.slider(
-    'Temperature', min_value=0.0, max_value=1.0, value=0.7, step=0.1
-)
+api_key_input = st.sidebar.text_input("OpenAI API Key", type="password", key="api_key")
+temperature = st.sidebar.slider('Temperature', min_value=0.0, max_value=1.0, value=0.7, step=0.1)
 
 # Store the API key in the session state
 if api_key_input:
@@ -34,9 +31,12 @@ def load_data(file_path):
 
 data = load_data('datasampah1.csv')
 
-# Display data if necessary
-if st.checkbox('Show CSV Data'):
-    st.write(data)
+# Function to generate embeddings for the CSV data
+@st.cache_data
+def create_embeddings(data):
+    return data.apply(lambda row: get_embedding(str(row), model="text-embedding-ada-002"), axis=1)
+
+embeddings = create_embeddings(data)
 
 # Function to generate responses using OpenAI's API
 def generate_response(prompt, temperature=0.7):
@@ -54,15 +54,29 @@ def generate_response(prompt, temperature=0.7):
         st.error(f"An error occurred: {e}")
         return "I'm sorry, I couldn't generate a response."
 
+# Function to find the most relevant rows based on cosine similarity
+def find_most_relevant_rows(question, embeddings, data):
+    question_embedding = get_embedding(question, model="text-embedding-ada-002")
+    similarities = embeddings.apply(lambda emb: cosine_similarity(emb, question_embedding))
+    most_relevant_index = similarities.idxmax()
+    return data.iloc[most_relevant_index]
+
 # User input
 question = st.text_input("Ask a question based on the document:")
 
 if question:
-    # Formulate a prompt to query based on the CSV content
-    prompt = f"Based on the following data:\n\n{data.head(5).to_string()}\n\nQ: {question}\nA:"
+    # Find the most relevant data row
+    relevant_data = find_most_relevant_rows(question, embeddings, data)
+    
+    # Formulate a prompt to query based on the most relevant CSV content
+    prompt = f"Based on the following data:\n\n{relevant_data.to_string()}\n\nQ: {question}\nA:"
     
     # Generate a response
     answer = generate_response(prompt, temperature)
     
     # Display the answer
     st.write(answer)
+
+# Display data if necessary
+if st.checkbox('Show CSV Data'):
+    st.write(data)

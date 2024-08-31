@@ -2,8 +2,11 @@ import streamlit as st
 import pandas as pd
 import openai
 
+# Set Streamlit page configuration
+st.set_page_config(page_title="Q&A Chatbot", layout="centered")
+
 # Load CSV data
-@st.cache
+@st.cache_data
 def load_data(file_path):
     return pd.read_csv(file_path)
 
@@ -13,7 +16,7 @@ data = load_data('datasampah1.csv')
 if st.checkbox('Show CSV Data'):
     st.write(data)
 
-# OpenAI API Key
+# OpenAI API Key (Make sure you set your API key in Streamlit's secrets)
 openai.api_key = st.secrets["openai_api_key"]
 
 # Function to generate responses using OpenAI's API

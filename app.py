@@ -9,8 +9,15 @@ if openai_api_key:
 else:
     st.warning("Please provide a valid OpenAI API key!")
 
-# Load the CSV data
-df = pd.read_csv('datasampah1.csv')
+# Load the CSV data with error handling
+try:
+    df = pd.read_csv('datasampah1.csv')
+except FileNotFoundError:
+    st.error("The CSV file was not found. Please make sure 'datasampah1.csv' is in the same directory as this script.")
+    st.stop()
+except Exception as e:
+    st.error(f"An error occurred while loading the CSV file: {str(e)}")
+    st.stop()
 
 # Initialize session state for chat history
 if 'chat_history' not in st.session_state:
@@ -22,13 +29,12 @@ st.title('WasteWiseChatbot - Simple Q&A Chatbot')
 
 # Function to search the CSV and generate a response
 def search_csv(input_text):
-    # Simple search in the CSV file
     matching_rows = df[df.apply(lambda row: input_text.lower() in row.to_string().lower(), axis=1)]
     
     if matching_rows.empty:
         return "I couldn't find any relevant information in the data."
 
-    # Extract some of the matching rows to use in the response
+    # Limit to the first 3 matching rows
     result = "\n\n".join(matching_rows.head(3).apply(lambda row: row.to_string(), axis=1))
     
     return result
@@ -50,7 +56,7 @@ def generate_response(input_text):
         except Exception as e:
             final_response = f"An error occurred: {str(e)}"
     else:
-        final_response = "Unable to process your request."
+        final_response = "Unable to process your request. Make sure you have entered a valid OpenAI API key."
     
     # Store the conversation history
     st.session_state['chat_history'].append({"user": input_text, "bot": final_response})
@@ -65,7 +71,7 @@ for chat in st.session_state['chat_history']:
 with st.form('my_form'):
     text = st.text_area(
         'Ask a question:',
-        value=st.session_state.get('input_text', 'Type your question here...'),
+        value=st.session_state.get('input_text', ''),
         height=150
     )
     submitted = st.form_submit_button('Submit')

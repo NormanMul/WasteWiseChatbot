@@ -39,7 +39,7 @@ def generate_response(input_text):
             # Interact with OpenAI's API
             openai.api_key = openai_api_key
             try:
-                response = openai.chat_completions.create(
+                response = openai.ChatCompletion.create(
                     model="gpt-3.5-turbo",
                     messages=[
                         {"role": "system", "content": "You are a helpful assistant."},

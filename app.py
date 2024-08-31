@@ -1,29 +1,33 @@
 import streamlit as st
 import pandas as pd
 import openai
-from langchain.llms import OpenAI
-from langchain.chains import RetrievalQA
-from langchain.vectorstores import SimpleCSVLoader
+from langchain.chains.question_answering import load_qa_chain
+from langchain.vectorstores import Chroma
+from langchain.embeddings.openai import OpenAIEmbeddings
 from langchain.text_splitter import CharacterTextSplitter
+from langchain.docstore.document import Document
+from langchain.llms import OpenAI
 
-# Load the CSV data and prepare it for LangChain
+# Load the CSV data
 df = pd.read_csv('datasampah1.csv')
-df.to_csv('prepared_datasampah.csv', index=False)
 
-# Load CSV into a LangChain-compatible format
-loader = SimpleCSVLoader("prepared_datasampah.csv")
-documents = loader.load()
+# Prepare the documents for LangChain
+documents = [Document(page_content=row.to_string()) for _, row in df.iterrows()]
 
 # Split the documents into smaller chunks
 text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=0)
 split_docs = text_splitter.split_documents(documents)
 
+# Initialize OpenAI Embeddings and Vector Store
+embeddings = OpenAIEmbeddings()
+vectorstore = Chroma.from_documents(split_docs, embeddings)
+
 # Initialize the OpenAI LLM with the API key
 openai_api_key = st.sidebar.text_input('OpenAI API Key', type="password")
-llm = OpenAI(temperature=0.7, openai_api_key=openai_api_key)
+llm = OpenAI(openai_api_key=openai_api_key, temperature=0.7)
 
-# Set up the RetrievalQA chain
-qa_chain = RetrievalQA.from_chain_type(llm=llm, chain_type="map_reduce", retriever=loader.as_retriever())
+# Set up the QA chain
+qa_chain = load_qa_chain(llm=llm, chain_type="stuff", retriever=vectorstore.as_retriever())
 
 # Initialize session state for chat history
 if 'chat_history' not in st.session_state:

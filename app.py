@@ -16,10 +16,13 @@ data = load_data('datasampah1.csv')
 if st.checkbox('Show CSV Data'):
     st.write(data)
 
-# Sidebar for API key input
+# Sidebar for API key input and temperature slider
 st.sidebar.title("Configuration")
 api_key_input = st.sidebar.text_input(
-    "Enter your OpenAI API Key", type="password", key="api_key"
+    "OpenAI API Key", type="password", key="api_key"
+)
+temperature = st.sidebar.slider(
+    'Temperature', min_value=0.0, max_value=1.0, value=0.7, step=0.1
 )
 
 # Store the API key in the session state
@@ -36,14 +39,15 @@ if not api_key:
 openai.api_key = api_key
 
 # Function to generate responses using OpenAI's API
-def generate_response(prompt):
+def generate_response(prompt, temperature=0.7):
     try:
-        response = openai.chat_completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
                 {"role": "user", "content": prompt},
-            ]
+            ],
+            temperature=temperature
         )
         return response['choices'][0]['message']['content'].strip()
     except Exception as e:
@@ -58,7 +62,7 @@ if question:
     prompt = f"Based on the following data:\n\n{data.head(5).to_string()}\n\nQ: {question}\nA:"
     
     # Generate a response
-    answer = generate_response(prompt)
+    answer = generate_response(prompt, temperature)
     
     # Display the answer
     st.write(answer)

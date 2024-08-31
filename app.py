@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import openai
-from openai.embeddings_utils import get_embedding, cosine_similarity
 
 # Set Streamlit page configuration
 st.set_page_config(page_title="WasteWiseChatbot", layout="centered")
@@ -31,12 +30,9 @@ def load_data(file_path):
 
 data = load_data('datasampah1.csv')
 
-# Function to generate embeddings for the CSV data
-@st.cache_data
-def create_embeddings(data):
-    return data.apply(lambda row: get_embedding(str(row), model="text-embedding-ada-002"), axis=1)
-
-embeddings = create_embeddings(data)
+# Display data if necessary
+if st.checkbox('Show CSV Data'):
+    st.write(data)
 
 # Function to generate responses using OpenAI's API
 def generate_response(prompt, temperature=0.7):
@@ -54,22 +50,18 @@ def generate_response(prompt, temperature=0.7):
         st.error(f"An error occurred: {e}")
         return "I'm sorry, I couldn't generate a response."
 
-# Function to find the most relevant rows based on cosine similarity
-def find_most_relevant_rows(question, embeddings, data):
-    question_embedding = get_embedding(question, model="text-embedding-ada-002")
-    similarities = embeddings.apply(lambda emb: cosine_similarity(emb, question_embedding))
-    most_relevant_index = similarities.idxmax()
-    return data.iloc[most_relevant_index]
+# Basic function to formulate a prompt based on the CSV content
+def formulate_prompt(data, question):
+    context = data.head(5).to_string(index=False)
+    prompt = f"Based on the following data:\n\n{context}\n\nQ: {question}\nA:"
+    return prompt
 
 # User input
 question = st.text_input("Ask a question based on the document:")
 
 if question:
-    # Find the most relevant data row
-    relevant_data = find_most_relevant_rows(question, embeddings, data)
-    
-    # Formulate a prompt to query based on the most relevant CSV content
-    prompt = f"Based on the following data:\n\n{relevant_data.to_string()}\n\nQ: {question}\nA:"
+    # Formulate the prompt
+    prompt = formulate_prompt(data, question)
     
     # Generate a response
     answer = generate_response(prompt, temperature)
@@ -77,6 +69,3 @@ if question:
     # Display the answer
     st.write(answer)
 
-# Display data if necessary
-if st.checkbox('Show CSV Data'):
-    st.write(data)

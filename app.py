@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-import openai
+from openai import OpenAI
 
 # Set Streamlit page configuration
 st.set_page_config(page_title="WasteWiseChatbot", layout="centered")
@@ -21,7 +21,8 @@ if not api_key:
     st.sidebar.error("Please enter your OpenAI API key to continue.")
     st.stop()
 
-openai.api_key = api_key
+# Instantiate the OpenAI client
+client = OpenAI(api_key=api_key)
 
 # Load CSV data
 @st.cache_data
@@ -37,7 +38,7 @@ if st.checkbox('Show CSV Data'):
 # Function to generate responses using OpenAI's API
 def generate_response(prompt, temperature=0.7):
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},
@@ -45,7 +46,7 @@ def generate_response(prompt, temperature=0.7):
             ],
             temperature=temperature
         )
-        return response['choices'][0]['message']['content'].strip()
+        return response.choices[0].message['content'].strip()
     except Exception as e:
         st.error(f"An error occurred: {e}")
         return "I'm sorry, I couldn't generate a response."

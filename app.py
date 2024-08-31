@@ -1,12 +1,6 @@
 import streamlit as st
 import pandas as pd
 import openai
-from langchain.chains.question_answering import load_qa_chain
-from langchain.vectorstores import Chroma
-from langchain.embeddings.openai import OpenAIEmbeddings
-from langchain.text_splitter import CharacterTextSplitter
-from langchain.docstore.document import Document
-from langchain.llms import OpenAI
 
 # Initialize the OpenAI API key
 openai_api_key = st.sidebar.text_input('OpenAI API Key', type="password")
@@ -18,52 +12,49 @@ else:
 # Load the CSV data
 df = pd.read_csv('datasampah1.csv')
 
-# Prepare the documents for LangChain
-documents = [Document(page_content=row.to_string()) for _, row in df.iterrows()]
-
-# Split the documents into smaller chunks
-text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=0)
-split_docs = text_splitter.split_documents(documents)
-
-# Initialize OpenAI Embeddings and Vector Store with error handling
-if openai_api_key:
-    try:
-        embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
-        vectorstore = Chroma.from_documents(split_docs, embeddings)
-    except Exception as e:
-        st.error(f"An error occurred while initializing embeddings: {str(e)}")
-        embeddings = None
-else:
-    embeddings = None
-
-# Initialize the OpenAI LLM with the API key
-if embeddings:
-    llm = OpenAI(temperature=0.7, openai_api_key=openai_api_key)
-    qa_chain = load_qa_chain(llm=llm, chain_type="stuff", retriever=vectorstore.as_retriever())
-else:
-    st.stop()  # Stop the app if embeddings are not initialized
-
 # Initialize session state for chat history
 if 'chat_history' not in st.session_state:
     st.session_state['chat_history'] = []
 
 # Configure Streamlit page
 st.set_page_config(page_title="WasteWiseChatbot")
-st.title('WasteWiseChatbot - Chatbot with LangChain and RAG')
+st.title('WasteWiseChatbot - Simple Q&A Chatbot')
 
-# Function to generate a response using LangChain
-def generate_response(input_text):
-    if not qa_chain:
-        return "QA chain is not properly initialized."
+# Function to search the CSV and generate a response
+def search_csv(input_text):
+    # Simple search in the CSV file
+    matching_rows = df[df.apply(lambda row: input_text.lower() in row.to_string().lower(), axis=1)]
     
-    try:
-        response = qa_chain.run(input_text)
-    except Exception as e:
-        response = f"An error occurred: {str(e)}"
+    if matching_rows.empty:
+        return "I couldn't find any relevant information in the data."
+
+    # Extract some of the matching rows to use in the response
+    result = "\n\n".join(matching_rows.head(3).apply(lambda row: row.to_string(), axis=1))
+    
+    return result
+
+def generate_response(input_text):
+    # Use the search function to retrieve data
+    retrieved_data = search_csv(input_text)
+    
+    # Generate a response using OpenAI's GPT
+    if openai_api_key and retrieved_data:
+        try:
+            response = openai.Completion.create(
+                engine="text-davinci-003",
+                prompt=f"Based on the following data, answer the question:\n\nData:\n{retrieved_data}\n\nQuestion: {input_text}\n\nAnswer:",
+                max_tokens=150,
+                temperature=0.7
+            )
+            final_response = response.choices[0].text.strip()
+        except Exception as e:
+            final_response = f"An error occurred: {str(e)}"
+    else:
+        final_response = "Unable to process your request."
     
     # Store the conversation history
-    st.session_state['chat_history'].append({"user": input_text, "bot": response})
-    return response
+    st.session_state['chat_history'].append({"user": input_text, "bot": final_response})
+    return final_response
 
 # Layout for displaying chat history and input form
 st.subheader("Conversation History")

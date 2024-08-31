@@ -38,7 +38,7 @@ openai.api_key = api_key
 # Function to generate responses using OpenAI's API
 def generate_response(prompt):
     try:
-        response = openai.ChatCompletion.create(
+        response = openai.chat_completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are a helpful assistant."},

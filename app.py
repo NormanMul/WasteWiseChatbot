@@ -5,17 +5,6 @@ import openai
 # Set Streamlit page configuration - This must be at the very top
 st.set_page_config(page_title="WasteWiseChatbot", layout="centered")
 
-# Load CSV data
-@st.cache_data
-def load_data(file_path):
-    return pd.read_csv(file_path)
-
-data = load_data('datasampah1.csv')
-
-# Display data if necessary
-if st.checkbox('Show CSV Data'):
-    st.write(data)
-
 # Sidebar for API key input and temperature slider
 st.sidebar.title("Configuration")
 api_key_input = st.sidebar.text_input(
@@ -37,6 +26,17 @@ if not api_key:
     st.stop()
 
 openai.api_key = api_key
+
+# Load CSV data
+@st.cache_data
+def load_data(file_path):
+    return pd.read_csv(file_path)
+
+data = load_data('datasampah1.csv')
+
+# Display data if necessary
+if st.checkbox('Show CSV Data'):
+    st.write(data)
 
 # Function to generate responses using OpenAI's API
 def generate_response(prompt, temperature=0.7):

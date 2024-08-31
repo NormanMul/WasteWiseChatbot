@@ -21,11 +21,11 @@ temperature = st.sidebar.slider('Temperature', min_value=0.0, max_value=1.0, val
 def query_dataset(month):
     result = df[df['nama_bulan'].str.contains(month.upper(), na=False)]
     if not result.empty:
-        return result
+        return result.to_string(index=False)
     else:
         return "Data not found for the specified month."
 
-# Function to generate a response using OpenAI's API
+# Function to generate a response using OpenAI's Chat API
 def generate_response(input_text):
     input_text_lower = input_text.lower()
     

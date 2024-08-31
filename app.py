@@ -25,7 +25,7 @@ def query_dataset(month):
     else:
         return "Data not found for the specified month."
 
-# Function to generate a response using OpenAI's ChatCompletion API
+# Function to generate a response using OpenAI's API
 def generate_response(input_text):
     input_text_lower = input_text.lower()
     
@@ -39,15 +39,14 @@ def generate_response(input_text):
             # Interact with OpenAI's API
             openai.api_key = openai_api_key
             try:
-                completion = openai.ChatCompletion.create(
+                response = openai.chat_completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
                         {"role": "system", "content": "You are a helpful assistant."},
                         {"role": "user", "content": input_text},
                     ],
                     temperature=temperature,
-                )
-                response = completion.choices[0].message['content'].strip()
+                ).choices[0].message['content'].strip()
             except Exception as e:
                 response = f"An error occurred: {str(e)}"
 

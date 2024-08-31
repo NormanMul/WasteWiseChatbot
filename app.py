@@ -68,4 +68,3 @@ if question:
     
     # Display the answer
     st.write(answer)
-

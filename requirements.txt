@@ -1,5 +1,4 @@
+pillow==9.2.0
 streamlit==1.26.0
 pandas==2.1.1
 openai==0.28.0
-langchain==0.0.233
-chromadb==0.3.26

@@ -12,6 +12,8 @@ from langchain.llms import OpenAI
 openai_api_key = st.sidebar.text_input('OpenAI API Key', type="password")
 if openai_api_key:
     openai.api_key = openai_api_key
+else:
+    st.warning("Please provide a valid OpenAI API key!")
 
 # Load the CSV data
 df = pd.read_csv('datasampah1.csv')
@@ -24,21 +26,22 @@ text_splitter = CharacterTextSplitter(chunk_size=500, chunk_overlap=0)
 split_docs = text_splitter.split_documents(documents)
 
 # Initialize OpenAI Embeddings and Vector Store with error handling
-try:
-    embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
-    vectorstore = Chroma.from_documents(split_docs, embeddings)
-except Exception as e:
-    st.error(f"An error occurred while initializing embeddings: {str(e)}")
+if openai_api_key:
+    try:
+        embeddings = OpenAIEmbeddings(openai_api_key=openai_api_key)
+        vectorstore = Chroma.from_documents(split_docs, embeddings)
+    except Exception as e:
+        st.error(f"An error occurred while initializing embeddings: {str(e)}")
+        embeddings = None
+else:
+    embeddings = None
 
 # Initialize the OpenAI LLM with the API key
-if openai_api_key:
+if embeddings:
     llm = OpenAI(temperature=0.7, openai_api_key=openai_api_key)
-else:
-    st.warning("Please provide a valid OpenAI API key!")
-
-# Set up the QA chain if embeddings are initialized
-if 'embeddings' in locals():
     qa_chain = load_qa_chain(llm=llm, chain_type="stuff", retriever=vectorstore.as_retriever())
+else:
+    st.stop()  # Stop the app if embeddings are not initialized
 
 # Initialize session state for chat history
 if 'chat_history' not in st.session_state:
@@ -50,7 +53,7 @@ st.title('WasteWiseChatbot - Chatbot with LangChain and RAG')
 
 # Function to generate a response using LangChain
 def generate_response(input_text):
-    if 'qa_chain' not in locals():
+    if not qa_chain:
         return "QA chain is not properly initialized."
     
     try:
@@ -76,8 +79,5 @@ with st.form('my_form'):
     )
     submitted = st.form_submit_button('Submit')
     if submitted:
-        if openai_api_key.startswith('sk-'):
-            response = generate_response(text)
-            st.text_area("Bot's response:", value=response, height=100)
-        else:
-            st.warning('Please enter a valid OpenAI API key!', icon='⚠️')
+        response = generate_response(text)
+        st.text_area("Bot's response:", value=response, height=100)

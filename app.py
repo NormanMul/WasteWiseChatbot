@@ -1,10 +1,6 @@
 import streamlit as st
 import pandas as pd
-import openai  # Directly import openai
-from langchain.schema import (
-    AIMessage,
-    HumanMessage,
-)
+import openai  # Import OpenAI directly
 
 # Load the CSV data
 df = pd.read_csv('datasampah1.csv')
@@ -15,7 +11,11 @@ if 'chat_history' not in st.session_state:
 
 # Configure Streamlit page
 st.set_page_config(page_title="WasteWiseChatbot")
-st.title('WasteWiseChatbot - Chatbot with Dataset Querying')
+st.title('WasteWiseChatbot - Chatbot with OpenAI Integration')
+
+# OpenAI API key configuration
+openai_api_key = st.sidebar.text_input('OpenAI API Key', type="password")
+temperature = st.sidebar.slider('Temperature', min_value=0.0, max_value=1.0, value=0.7, step=0.1)
 
 # Function to query the dataset
 def query_dataset(month):
@@ -25,53 +25,45 @@ def query_dataset(month):
     else:
         return "Data not found for the specified month."
 
-# Define function to generate chatbot responses
+# Function to generate a response using OpenAI's API
 def generate_response(input_text):
     input_text_lower = input_text.lower()
     
-    if "saldo" in input_text_lower:
-        response = "Haloo.. Saldo anda saat ini tidak tersedia dalam dataset ini."
-    elif "bayar iuran pln" in input_text_lower:
-        response = "Transaksi pembayaran PLN tidak tersedia dalam dataset ini."
-    elif "plan investasi" in input_text_lower or "investasi" in input_text_lower:
-        response = "Rencana investasi tidak tersedia dalam dataset ini."
-    elif "bulan" in input_text_lower:
+    if "bulan" in input_text_lower:
         month = input_text.split()[-1]
         response = query_dataset(month)
     else:
-        response = "Maaf, saya tidak mengerti pertanyaan Anda. Bisa Anda ulangi dengan lebih jelas?"
+        if not openai_api_key:
+            response = "Please provide a valid OpenAI API key."
+        else:
+            # Interact with OpenAI's API
+            openai.api_key = openai_api_key
+            try:
+                completion = openai.Completion.create(
+                    engine="text-davinci-003",
+                    prompt=input_text,
+                    max_tokens=150,
+                    n=1,
+                    stop=None,
+                    temperature=temperature,
+                )
+                response = completion.choices[0].text.strip()
+            except Exception as e:
+                response = f"An error occurred: {str(e)}"
 
     # Store the conversation history
-    st.session_state['chat_history'].append(HumanMessage(content=input_text))
-    st.session_state['chat_history'].append(AIMessage(content=str(response)))
+    st.session_state['chat_history'].append({"user": input_text, "bot": response})
     return response
 
 # Layout for displaying chat history and input form
 st.subheader("Conversation History")
-for message in st.session_state['chat_history']:
-    if isinstance(message, HumanMessage):
-        st.text_area("You said:", value=message.content, height=75, key=str(message))
-    elif isinstance(message, AIMessage):
-        st.text_area("Bot said:", value=message.content, height=75, key=str(message))
-
-st.subheader("Quick Questions")
-col1, col2, col3, col4 = st.columns(4)
-with col1:
-    if st.button("Check Data for a Month"):
-        st.session_state['input_text'] = "Data bulan JULI?"
-with col2:
-    if st.button("General Query"):
-        st.session_state['input_text'] = "How much data is available for this year?"
-with col3:
-    if st.button("Specific Data Query"):
-        st.session_state['input_text'] = "Data bulan OKTOBER?"
-with col4:
-    if st.button("Another Query"):
-        st.session_state['input_text'] = "Is there data for SEPTEMBER?"
+for chat in st.session_state['chat_history']:
+    st.text_area("You said:", value=chat['user'], height=75)
+    st.text_area("Bot said:", value=chat['bot'], height=75)
 
 with st.form('my_form'):
     text = st.text_area(
-        'Ask a question about the dataset:',
+        'Ask a question:',
         value=st.session_state.get('input_text', 'Type your question here...'),
         height=150
     )
